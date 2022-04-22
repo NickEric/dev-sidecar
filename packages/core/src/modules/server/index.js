@@ -11,7 +11,7 @@ if (JSON5.default) {
   JSON5 = JSON5.default
 }
 
-let server
+let server = null
 function fireStatus (status) {
   event.fire('status', { key: 'server.enabled', value: status })
 }
@@ -55,6 +55,11 @@ const serverApi = {
       })
     }
 
+    if (serverConfig.intercept.enabled === false) {
+      // 如果设置为关闭拦截
+      serverConfig.intercepts = {}
+    }
+
     for (const key in plugins) {
       const plugin = plugins[key]
       if (plugin.overrideRunningConfig) {
@@ -74,15 +79,29 @@ const serverApi = {
         serverProcess.send({ type: 'action', event: { key: 'close' } })
       }
     }
+    serverProcess.on('beforeExit', (code) => {
+      log.warn('server process beforeExit', code)
+    })
+    serverProcess.on('SIGPIPE', (code, signal) => {
+      log.warn('server process SIGPIPE', code, signal)
+    })
+    serverProcess.on('exit', (code, signal) => {
+      log.warn('server process exit', code, signal)
+    })
+    serverProcess.on('uncaughtException', (err, origin) => {
+      log.error('server process uncaughtException', err)
+    })
     serverProcess.on('message', function (msg) {
-      log.info('收到子进程消息', msg.type, msg.event.key)
+      log.info('收到子进程消息', msg.type, msg.event.key, msg.message)
       if (msg.type === 'status') {
         fireStatus(msg.event)
       } else if (msg.type === 'error') {
-        if (msg.event.code && msg.event.code === 'EADDRINUSE') {
-          fireStatus(false) // 启动失败
+        let code = ''
+        if (msg.event.code) {
+          code = msg.event.code
         }
-        event.fire('error', { key: 'server', value: 'EADDRINUSE', error: msg.event })
+        fireStatus(false) // 启动失败
+        event.fire('error', { key: 'server', value: code, error: msg.event, message: msg.message })
       } else if (msg.type === 'speed') {
         event.fire('speed', msg.event)
       }

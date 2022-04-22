@@ -34,6 +34,18 @@ function registerProcessListener () {
     log.info('Unhandled Rejection at: Promise', p, 'err:', err)
     // application specific logging, throwing an error, or other logic here
   })
+  process.on('uncaughtExceptionMonitor', (err, origin) => {
+    log.info('uncaughtExceptionMonitor:', err, origin)
+  })
+  process.on('exit', function (code, signal) {
+    log.info('代理服务进程被关闭:', code, signal)
+  })
+  process.on('beforeExit', (code, signal) => {
+    console.log('Process beforeExit event with code: ', code, signal)
+  })
+  process.on('SIGPIPE', (code, signal) => {
+    log.warn('sub Process SIGPIPE', code, signal)
+  })
 }
 
 const api = {
@@ -53,7 +65,7 @@ const api = {
     }
     const newServer = mitmproxy.createProxy(proxyOptions, () => {
       fireStatus(true)
-      log.info('代理服务已启动：127.0.0.1:' + proxyOptions.port)
+      log.info(`代理服务已启动：${proxyOptions.host}:${proxyOptions.port}`)
     })
     newServer.on('close', () => {
       log.info('server will closed ')
@@ -71,7 +83,7 @@ const api = {
 
     registerProcessListener()
   },
-  async  close () {
+  async close () {
     return new Promise((resolve, reject) => {
       if (server) {
         server.close((err) => {

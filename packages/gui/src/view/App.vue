@@ -1,4 +1,5 @@
 <template>
+  <a-config-provider :locale="locale">
   <div class="ds_layout">
     <a-layout>
       <a-layout-sider theme="light">
@@ -36,22 +37,26 @@
         </a-layout-content>
         <a-layout-footer>
           <div class="footer">
-            ©2020 docmirror.cn
+            ©2020-2021 docmirror.cn by Greper  <span>{{info.version}}</span>
           </div>
         </a-layout-footer>
       </a-layout>
     </a-layout>
   </div>
+  </a-config-provider>
 </template>
 
 <script>
 import createMenus from '@/view/router/menu'
+import zhCN from 'ant-design-vue/lib/locale-provider/zh_CN'
 export default {
   name: 'App',
   components: {
   },
   data () {
     return {
+      locale: zhCN,
+      info: {},
       menus: undefined
     }
   },
@@ -59,6 +64,9 @@ export default {
   },
   created () {
     this.menus = createMenus(this)
+    this.$api.info.get().then(ret => {
+      this.info = ret
+    })
   },
   methods: {
     handleClick (e) {

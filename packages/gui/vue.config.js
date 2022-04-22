@@ -1,6 +1,8 @@
 const path = require('path')
 const webpack = require('webpack')
-
+const publishUrl = process.env.VUE_APP_PUBLISH_URL
+const publishProvider = process.env.VUE_APP_PUBLISH_PROVIDER
+console.log('publish url', publishUrl)
 module.exports = {
   pages: {
     index: {
@@ -8,7 +10,7 @@ module.exports = {
       title: 'DevSidecar-给开发者的边车辅助工具'
     }
   },
-  configureWebpack: config => {
+  configureWebpack: (config) => {
     const configNew = {
       plugins: [
         new webpack.DefinePlugin({ 'global.GENTLY': true })
@@ -35,6 +37,12 @@ module.exports = {
       // Your main process file will be added by default
       mainProcessWatch: ['src/bridge', 'src/*.js', 'node_modules/dev-sidecar/src'],
       builderOptions: {
+        afterPack: './pkg/after-pack.js',
+        afterAllArtifactBuild: './pkg/after-all-artifact-build.js',
+        // artifactBuildCompleted: './pkg/artifact-build-completed.js',
+        // builderOptions: {
+        //   publish: ['github']// 此处写入github 就好，不用添加其他内容
+        // },
         extraResources: [
           {
             from: 'extra',
@@ -42,22 +50,39 @@ module.exports = {
           }
         ],
         appId: 'dev-sidecar',
-        productName: 'DevSidecar',
+        productName: 'dev-sidecar',
         // eslint-disable-next-line no-template-curly-in-string
         artifactName: 'DevSidecar-${version}.${ext}',
-        copyright: 'Copyright © 2020',
+        copyright: 'Copyright © 2020-2021 Greper',
         nsis: {
           oneClick: false,
           perMachine: true,
           allowElevation: true,
-          allowToChangeInstallationDirectory: true
+          allowToChangeInstallationDirectory: true,
+          include: './build/installer.nsh'
         },
         mac: {
-          icon: 'build/mac/icon.icns'
+          icon: './build/mac/icon.icns',
+          target: {
+            arch: 'universal',
+            target: 'dmg'
+          }
+        },
+        win: {
+          icon: 'build/icons/'
+          // requestedExecutionLevel: 'highestAvailable' // 加了这个无法开机自启
+        },
+        linux: {
+          icon: 'build/mac/',
+          target: [
+            'deb',
+            'AppImage'
+          ]
         },
         publish: {
-          provider: 'generic',
-          url: ''
+          provider: publishProvider,
+          url: publishUrl
+          // url: 'http://dev-sidecar.docmirror.cn/update/preview/'
         }
       },
       chainWebpackMainProcess (config) {

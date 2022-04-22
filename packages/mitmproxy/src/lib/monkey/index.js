@@ -56,8 +56,9 @@ function loadScript (content) {
 }
 
 function readFile (rootDir, script) {
+  log.info('script root location', path.resolve('./'))
   const location = path.join(rootDir, './' + script)
-  log.debug('script location:', location)
+  log.info('script location:', location)
   return fs.readFileSync(location).toString()
 }
 
@@ -72,7 +73,7 @@ const api = {
     scripts = {}
     scripts.github = loadScript(readFile(rootDir, 'github.script'))
     scripts.google = loadScript(readFile(rootDir, 'google.js'))
-    scripts.jquery = { script: readFile(rootDir, 'jquery.min.js') }
+    // scripts.jquery = { script: readFile(rootDir, 'jquery.min.js') }
     scripts.global = { script: readFile(rootDir, 'global.script') }
     return scripts
   }

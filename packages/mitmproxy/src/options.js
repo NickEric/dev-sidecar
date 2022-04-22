@@ -2,6 +2,7 @@ const interceptors = require('./lib/interceptor')
 const dnsUtil = require('./lib/dns')
 const log = require('./utils/util.log')
 const matchUtil = require('./utils/util.match')
+const path = require('path')
 const createOverwallMiddleware = require('./lib/proxy/middleware/overwall')
 
 module.exports = (config) => {
@@ -12,12 +13,21 @@ module.exports = (config) => {
   const serverConfig = config
   const setting = serverConfig.setting
 
-  const overwallMiddleware = createOverwallMiddleware(serverConfig.plugin.overwall)
+  if (!setting.script.dirAbsolutePath) {
+    setting.script.dirAbsolutePath = path.join(setting.rootDir, setting.script.defaultDir)
+  }
+
+  const overwallConfig = serverConfig.plugin.overwall
+  if (!overwallConfig.pac.pacFileAbsolutePath) {
+    overwallConfig.pac.pacFileAbsolutePath = path.join(setting.rootDir, overwallConfig.pac.pacFilePath)
+  }
+  const overwallMiddleware = createOverwallMiddleware(overwallConfig)
   const middlewares = []
   if (overwallMiddleware) {
     middlewares.push(overwallMiddleware)
   }
   const options = {
+    host: serverConfig.host,
     port: serverConfig.port,
     dnsConfig: {
       providers: dnsUtil.initDNS(serverConfig.dns.providers),
@@ -25,16 +35,21 @@ module.exports = (config) => {
       speedTest: config.dns.speedTest
     },
     setting,
+    sniConfig: serverConfig.sniList,
     middlewares,
     sslConnectInterceptor: (req, cltSocket, head) => {
       const hostname = req.url.split(':')[0]
       const inWhiteList = matchUtil.matchHostname(whiteList, hostname) != null
       if (inWhiteList) {
         log.info('白名单域名，不拦截', hostname)
-        return false
+        return false // 所有都不拦截
       }
       // 配置了拦截的域名，将会被代理
-      return !!matchUtil.matchHostname(intercepts, hostname)
+      const matched = !!matchUtil.matchHostname(intercepts, hostname)
+      if (matched === true) {
+        return matched // 拦截
+      }
+      return null // 由下一个拦截器判断
     },
     createIntercepts: (context) => {
       const rOptions = context.rOptions
